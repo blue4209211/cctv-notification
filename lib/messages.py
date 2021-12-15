@@ -5,13 +5,28 @@ import asyncio
 
 from lib import config
 
+import atexit
+
 event_loop = asyncio.new_event_loop()
 asyncio.set_event_loop(event_loop)
 
-client = TelegramClient(
-    "session", config.telegram_api_id, config.telegram_api_hash, loop=event_loop
-)
-client.start()
+client = None
+
+print("brefore init", client)
+
+if client is None:
+    client = TelegramClient(
+        "session_linux", config.telegram_api_id, config.telegram_api_hash, loop=event_loop
+    )
+    client.start()
+
+def _close():
+    if client:
+        print("disconnecting messaging client")
+        client.disconnect()
+
+atexit.register(_close)
+
 
 
 async def send_message_async(frame, message):

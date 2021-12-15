@@ -1,7 +1,7 @@
 from flask import Flask, render_template, Response
 import cv2
 
-from lib import messages
+from lib.messages import send_message
 from lib import cctv
 from lib import image_utils
 import time
@@ -13,22 +13,24 @@ send_message_time_delta = 10
 def gen_frame_and_message():
     last_message_time = time.time()
 
-    for frame, bodies, faces in cctv.get_feed():
+    for frame, detections in cctv.get_feed():
 
         frame = image_utils.to_jpg(frame)
         yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
 
-        msg = "found face"
-        if len(bodies) > 0:
-            msg = "found body"
-        if len(bodies) > 0 and len(faces) > 0:
-            msg = "found body and face"
+        features = []
+        for key, frames in detections.items():
+            if len(frames) > 0:
+                features.append(key)
+
+        msg = "found - " + ",".join(features)
 
         if (
-            len(faces) > 0 or len(bodies) > 0
-        ) and time.time() - last_message_time > send_message_time_delta:
+            len(features) > 0
+            and time.time() - last_message_time > send_message_time_delta
+        ):
             try:
-                messages.send_message(frame, msg)
+                send_message(frame, msg)
             except Exception as e:
                 print("unable to send message", e)
             last_message_time = time.time()
